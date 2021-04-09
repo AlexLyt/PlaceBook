@@ -24,6 +24,7 @@ import com.google.android.libraries.places.api.model.Place
 import com.google.android.libraries.places.api.net.FetchPhotoRequest
 import com.google.android.libraries.places.api.net.FetchPlaceRequest
 import com.google.android.libraries.places.api.net.PlacesClient
+import com.raywenderlich.placebook.adapter.BookmarkInfoWindowAdapter
 
 // THIS IS MY PROJECT FOR SPC
 
@@ -39,7 +40,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         setContentView(R.layout.activity_maps)
         // Obtain the SupportMapFragment and get notified when the map is ready to be used.
         val mapFragment = supportFragmentManager
-                .findFragmentById(R.id.map) as SupportMapFragment
+            .findFragmentById(R.id.map) as SupportMapFragment
         mapFragment.getMapAsync(this)
 
         setupLocationClient()
@@ -57,6 +58,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
      */
     override fun onMapReady(googleMap: GoogleMap) {
         map = googleMap
+        map.setInfoWindowAdapter(BookmarkInfoWindowAdapter(this))
         getCurrentLocation()
         map.setOnPoiClickListener {
             displayPoi(it)
@@ -64,18 +66,22 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
     }
 
     private fun setupPlacesClient() {
-        Places.initialize(getApplicationContext(),
-                getString(R.string.google_maps_key));
+        Places.initialize(
+            getApplicationContext(),
+            getString(R.string.google_maps_key)
+        );
         placesClient = Places.createClient(this);
     }
 
     override fun onRequestPermissionsResult(
-            requestCode: Int,
-            permissions: Array<String>,
-            grantResults: IntArray) {
+        requestCode: Int,
+        permissions: Array<String>,
+        grantResults: IntArray
+    ) {
         if (requestCode == REQUEST_LOCATION) {
             if (grantResults.size == 1 && grantResults[0] ==
-                    PackageManager.PERMISSION_GRANTED) {
+                PackageManager.PERMISSION_GRANTED
+            ) {
                 getCurrentLocation()
             } else {
                 Log.e(TAG, "Location permission denied")
@@ -85,12 +91,14 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
 
     private fun setupLocationClient() {
         fusedLocationClient =
-                LocationServices.getFusedLocationProviderClient(this)
+            LocationServices.getFusedLocationProviderClient(this)
     }
 
     private fun requestLocationPermissions() {
-        ActivityCompat.requestPermissions(this,
-                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION), REQUEST_LOCATION)
+        ActivityCompat.requestPermissions(
+            this,
+            arrayOf(Manifest.permission.ACCESS_FINE_LOCATION), REQUEST_LOCATION
+        )
 
     }
 
@@ -101,9 +109,12 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
 
     private fun getCurrentLocation() {
 
-        if (ActivityCompat.checkSelfPermission(this,
-                        Manifest.permission.ACCESS_FINE_LOCATION) !=
-                PackageManager.PERMISSION_GRANTED) {
+        if (ActivityCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) !=
+            PackageManager.PERMISSION_GRANTED
+        ) {
 
             requestLocationPermissions()
         } else {
@@ -114,11 +125,15 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
                 val location = it.result
                 if (location != null) {
 
-                    val latLng = LatLng(location.latitude,
-                            location.longitude)
+                    val latLng = LatLng(
+                        location.latitude,
+                        location.longitude
+                    )
 
-                    val update = CameraUpdateFactory.newLatLngZoom(latLng,
-                            16.0f)
+                    val update = CameraUpdateFactory.newLatLngZoom(
+                        latLng,
+                        16.0f
+                    )
 
                     map.moveCamera(update)
                 } else {
@@ -133,80 +148,87 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         displayPoiGetPlaceStep(pointOfInterest)
     }
 
-    private fun displayPoiGetPlaceStep(pointOfInterest:
-                                       PointOfInterest) {
+    private fun displayPoiGetPlaceStep(
+        pointOfInterest:
+        PointOfInterest
+    ) {
         val placeId = pointOfInterest.placeId
-        val placeFields = listOf(Place.Field.ID,
-                Place.Field.NAME,
-                Place.Field.PHONE_NUMBER,
-                Place.Field.PHOTO_METADATAS,
-                Place.Field.ADDRESS,
-                Place.Field.LAT_LNG)
+        val placeFields = listOf(
+            Place.Field.ID,
+            Place.Field.NAME,
+            Place.Field.PHONE_NUMBER,
+            Place.Field.PHOTO_METADATAS,
+            Place.Field.ADDRESS,
+            Place.Field.LAT_LNG
+        )
         val request = FetchPlaceRequest
-                .builder(placeId, placeFields)
-                .build()
+            .builder(placeId, placeFields)
+            .build()
         placesClient.fetchPlace(request)
-                .addOnSuccessListener { response ->
-                    val place = response.place
-                    displayPoiGetPhotoStep(place)
-                }.addOnFailureListener { exception ->
-                    if (exception is ApiException) {
-                        val statusCode = exception.statusCode
-                        Log.e(TAG,
-                                "Place not found: " +
-                                        exception.message + ", " +
-                                        "statusCode: " + statusCode)
-                    }
+            .addOnSuccessListener { response ->
+                val place = response.place
+                displayPoiGetPhotoStep(place)
+            }.addOnFailureListener { exception ->
+                if (exception is ApiException) {
+                    val statusCode = exception.statusCode
+                    Log.e(
+                        TAG,
+                        "Place not found: " +
+                                exception.message + ", " +
+                                "statusCode: " + statusCode
+                    )
                 }
+            }
     }
-
 
 
     private fun displayPoiGetPhotoStep(place: Place) {
 // 1
         val photoMetadata = place
-                .getPhotoMetadatas()?.get(0)
+            .getPhotoMetadatas()?.get(0)
         if (photoMetadata == null) {
             displayPoiDisplayStep(place, null)
             return
         }
 // 3
         val photoRequest = FetchPhotoRequest
-                .builder(photoMetadata)
-                .setMaxWidth(resources.getDimensionPixelSize(
-                        R.dimen.default_image_width))
-                .setMaxHeight(resources.getDimensionPixelSize(
-                        R.dimen.default_image_height))
-                .build()
+            .builder(photoMetadata)
+            .setMaxWidth(
+                resources.getDimensionPixelSize(
+                    R.dimen.default_image_width
+                )
+            )
+            .setMaxHeight(
+                resources.getDimensionPixelSize(
+                    R.dimen.default_image_height
+                )
+            )
+            .build()
 // 4
         placesClient.fetchPhoto(photoRequest)
-                .addOnSuccessListener { fetchPhotoResponse ->
-                    val bitmap = fetchPhotoResponse.bitmap
-                    displayPoiDisplayStep(place, bitmap)
-                }.addOnFailureListener { exception ->
-                    if (exception is ApiException) {
-                        val statusCode = exception.statusCode
-                        Log.e(TAG,
-                                "Place not found: " +
-                                        exception.message + ", " +
-                                        "statusCode: " + statusCode)
-                    }
+            .addOnSuccessListener { fetchPhotoResponse ->
+                val bitmap = fetchPhotoResponse.bitmap
+                displayPoiDisplayStep(place, bitmap)
+            }.addOnFailureListener { exception ->
+                if (exception is ApiException) {
+                    val statusCode = exception.statusCode
+                    Log.e(
+                        TAG,
+                        "Place not found: " +
+                                exception.message + ", " +
+                                "statusCode: " + statusCode
+                    )
                 }
+            }
     }
 
-    private fun displayPoiDisplayStep(place: Place, photo: Bitmap?)
-    {
-        val iconPhoto = if (photo == null) {
-            BitmapDescriptorFactory
-                    .defaultMarker()
-        } else {
-            BitmapDescriptorFactory.fromBitmap(photo)
-        }
-        map.addMarker(MarkerOptions()
+    private fun displayPoiDisplayStep(place: Place, photo: Bitmap?) {
+        val marker = map.addMarker(
+            MarkerOptions()
                 .position(place.latLng as LatLng)
-                .icon(iconPhoto)
                 .title(place.name)
                 .snippet(place.phoneNumber)
         )
+        marker?.tag = photo
     }
 }
