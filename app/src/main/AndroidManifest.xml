@@ -17,6 +17,14 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.PlaceBook">
 
+        <activity
+            android:name=
+                "com.raywenderlich.placebook.ui.BookmarkDetailsActivity"
+            android:label="Bookmark"
+            android:theme="@style/AppTheme.NoActionBar"
+            android:windowSoftInputMode="stateHidden">
+        </activity>
+
         <!--
              The API key for Google Maps-based APIs is defined as a string resource.
              (See the file "res/values/google_maps_api.xml").
