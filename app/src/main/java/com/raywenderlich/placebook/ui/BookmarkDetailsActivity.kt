@@ -28,16 +28,16 @@ class BookmarkDetailsActivity : AppCompatActivity() {
         getIntentData()
     }
 
-    private fun setupToolbar() {                 // this is an issue page 361
-        setSupportActionBar(toolbar)             // page 370
+    private fun setupToolbar() {
+        setSupportActionBar(databinding.toolbar)
     }
 
     private fun populateFields() {                     // page 370
         bookmarkDetailsView?.let { bookmarkView ->
-            editTextName.setText(bookmarkView.name)
-            editTextPhone.setText(bookmarkView.phone)
-            editTextNotes.setText(bookmarkView.notes)
-            editTextAddress.setText(bookmarkView.address)
+            databinding.editTextName.setText(bookmarkView.name)
+            databinding.editTextPhone.setText(bookmarkView.phone)
+            databinding.editTextNotes.setText(bookmarkView.notes)
+            databinding.editTextAddress.setText(bookmarkView.address)
         }
     }
 
@@ -46,7 +46,7 @@ class BookmarkDetailsActivity : AppCompatActivity() {
         bookmarkDetailsView?.let { bookmarkView ->
             val placeImage = bookmarkView.getImage(this)
             placeImage?.let {
-                imageViewPlace.setImageBitmap(placeImage)
+                databinding.imageViewPlace.setImageBitmap(placeImage)
             }
         }
     }
@@ -77,15 +77,15 @@ class BookmarkDetailsActivity : AppCompatActivity() {
     }
 
     private fun saveChanges() {
-        val name = editTextName.text.toString()
+        val name = databinding.editTextName.text.toString()
         if (name.isEmpty()) {
             return
         }
         bookmarkDetailsView?.let { bookmarkView ->
-            bookmarkView.name = editTextName.text.toString()
-            bookmarkView.notes = editTextNotes.text.toString()
-            bookmarkView.address = editTextAddress.text.toString()
-            bookmarkView.phone = editTextPhone.text.toString()
+            bookmarkView.name = databinding.editTextName.text.toString()
+            bookmarkView.notes = databinding.editTextNotes.text.toString()
+            bookmarkView.address = databinding.editTextAddress.text.toString()
+            bookmarkView.phone = databinding.editTextPhone.text.toString()
             bookmarkDetailsViewModel.updateBookmark(bookmarkView)
         }
         finish()

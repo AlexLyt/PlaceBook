@@ -12,14 +12,13 @@ abstract class PlaceBookDatabase : RoomDatabase() {
     abstract fun bookmarkDao(): BookmarkDao
 
     companion object {
+
         private var instance: PlaceBookDatabase? = null
+
         fun getInstance(context: Context): PlaceBookDatabase {
             if (instance == null) {
-
-                instance = Room.databaseBuilder(
-                    context.applicationContext,
-                    PlaceBookDatabase::class.java, "PlaceBook"
-                )
+                instance = Room.databaseBuilder(context.applicationContext,
+                    PlaceBookDatabase::class.java, "PlaceBook")
                     .fallbackToDestructiveMigration()
                     .build()
             }
