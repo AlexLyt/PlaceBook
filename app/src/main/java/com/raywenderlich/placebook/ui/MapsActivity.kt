@@ -1,17 +1,21 @@
 package com.raywenderlich.placebook.ui
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
-import androidx.appcompat.app.AppCompatActivity
+import android.location.Location
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.viewModels
+import androidx.appcompat.app.ActionBarDrawerToggle
+import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.lifecycle.Observer
+import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.android.gms.common.api.ApiException
-import com.google.android.gms.location.*
-
+import com.google.android.gms.location.FusedLocationProviderClient
+import com.google.android.gms.location.LocationServices
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
@@ -24,11 +28,15 @@ import com.google.android.libraries.places.api.net.FetchPlaceRequest
 import com.google.android.libraries.places.api.net.PlacesClient
 import com.raywenderlich.placebook.R
 import com.raywenderlich.placebook.adapter.BookmarkInfoWindowAdapter
+import com.raywenderlich.placebook.adapter.BookmarkListAdapter
 import com.raywenderlich.placebook.viewmodel.MapsViewModel
+import kotlinx.android.synthetic.main.activity_maps.*
+import kotlinx.android.synthetic.main.drawer_view_maps.*
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
+import kotlinx.android.synthetic.main.main_view_maps.*
 
-// THIS IS MY PROJECT FOR SPC
+// MY NEWEST PROJECT
 
 class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
 
@@ -36,24 +44,26 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private lateinit var placesClient: PlacesClient
     private val mapsViewModel by viewModels<MapsViewModel>()
+    private lateinit var bookmarkListAdapter: BookmarkListAdapter
+    private var markers = HashMap<Long, Marker>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_maps)
         // Obtain the SupportMapFragment and get notified when the map is ready to be used.
-        val mapFragment = supportFragmentManager
-            .findFragmentById(R.id.map) as SupportMapFragment
+        val mapFragment = supportFragmentManager.findFragmentById(R.id.map) as SupportMapFragment
         mapFragment.getMapAsync(this)
-
-        setupLocationClient()
+        setUpLocationClient()
+        setupToolbar()
         setupPlacesClient()
+        setupNavigationDrawer()
     }
 
     override fun onMapReady(googleMap: GoogleMap) {
         map = googleMap
         setupMapListeners()
-        createBookmarkMarkerObserver()
         getCurrentLocation()
+        createBookmarkObserver()
     }
 
     private fun setupMapListeners() {
@@ -66,11 +76,17 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         }
     }
 
+    private fun setupToolbar() {
+        setSupportActionBar(toolbar)
+        val toggle = ActionBarDrawerToggle(
+            this, drawerLayout, toolbar,
+            R.string.open_drawer, R.string.close_drawer
+        )
+        toggle.syncState()
+    }
+
     private fun setupPlacesClient() {
-        Places.initialize(
-            getApplicationContext(),
-            getString(R.string.google_maps_key)
-        );
+        Places.initialize(getApplicationContext(), getString(R.string.google_maps_key));
         placesClient = Places.createClient(this);
     }
 
@@ -80,9 +96,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         grantResults: IntArray
     ) {
         if (requestCode == REQUEST_LOCATION) {
-            if (grantResults.size == 1 && grantResults[0] ==
-                PackageManager.PERMISSION_GRANTED
-            ) {
+            if (grantResults.size == 1 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 getCurrentLocation()
             } else {
                 Log.e(TAG, "Location permission denied")
@@ -90,9 +104,8 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         }
     }
 
-    private fun setupLocationClient() {
-        fusedLocationClient =
-            LocationServices.getFusedLocationProviderClient(this)
+    private fun setUpLocationClient() {
+        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
     }
 
     private fun requestLocationPermissions() {
@@ -100,45 +113,24 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
             this,
             arrayOf(Manifest.permission.ACCESS_FINE_LOCATION), REQUEST_LOCATION
         )
-
-    }
-
-    companion object {
-        private const val REQUEST_LOCATION = 1
-        private const val TAG = "MapsActivity"
     }
 
     private fun getCurrentLocation() {
-
         if (ActivityCompat.checkSelfPermission(
                 this,
                 Manifest.permission.ACCESS_FINE_LOCATION
-            ) !=
-            PackageManager.PERMISSION_GRANTED
+            ) != PackageManager.PERMISSION_GRANTED
         ) {
-
             requestLocationPermissions()
         } else {
-
             map.isMyLocationEnabled = true
-
             fusedLocationClient.lastLocation.addOnCompleteListener {
                 val location = it.result
                 if (location != null) {
-
-                    val latLng = LatLng(
-                        location.latitude,
-                        location.longitude
-                    )
-
-                    val update = CameraUpdateFactory.newLatLngZoom(
-                        latLng,
-                        16.0f
-                    )
-
+                    val latLng = LatLng(location.latitude, location.longitude)
+                    val update = CameraUpdateFactory.newLatLngZoom(latLng, 16.0f)
                     map.moveCamera(update)
                 } else {
-
                     Log.e(TAG, "No location found")
                 }
             }
@@ -149,10 +141,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         displayPoiGetPlaceStep(pointOfInterest)
     }
 
-    private fun displayPoiGetPlaceStep(
-        pointOfInterest:
-        PointOfInterest
-    ) {
+    private fun displayPoiGetPlaceStep(pointOfInterest: PointOfInterest) {
         val placeId = pointOfInterest.placeId
         val placeFields = listOf(
             Place.Field.ID,
@@ -162,76 +151,43 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
             Place.Field.ADDRESS,
             Place.Field.LAT_LNG
         )
-        val request = FetchPlaceRequest
-            .builder(placeId, placeFields)
-            .build()
-        placesClient.fetchPlace(request)
-            .addOnSuccessListener { response ->
-                val place = response.place
-                displayPoiGetPhotoStep(place)
-            }.addOnFailureListener { exception ->
-                if (exception is ApiException) {
-                    val statusCode = exception.statusCode
-                    Log.e(
-                        TAG,
-                        "Place not found: " +
-                                exception.message + ", " +
-                                "statusCode: " + statusCode
-                    )
-                }
+        val request = FetchPlaceRequest.builder(placeId, placeFields).build()
+        placesClient.fetchPlace(request).addOnSuccessListener { response ->
+            val place = response.place
+            displayPoiGetPhotoStep(place)
+        }.addOnFailureListener { exception ->
+            if (exception is ApiException) {
+                val statusCode = exception.statusCode
+                Log.e(
+                    TAG,
+                    "Place not found: " + exception.message + ", " + "statusCode: " + statusCode
+                )
             }
+        }
     }
-
 
     private fun displayPoiGetPhotoStep(place: Place) {
-// 1
-        val photoMetadata = place
-            .getPhotoMetadatas()?.get(0)
+        val photoMetadata = place.photoMetadatas?.get(0)
         if (photoMetadata == null) {
-            displayPoiDisplayStep(place, null)
             return
         }
-// 3
-        val photoRequest = FetchPhotoRequest
-            .builder(photoMetadata)
-            .setMaxWidth(
-                resources.getDimensionPixelSize(
-                    R.dimen.default_image_width
-                )
-            )
-            .setMaxHeight(
-                resources.getDimensionPixelSize(
-                    R.dimen.default_image_height
-                )
-            )
+        val photoRequest = FetchPhotoRequest.builder(photoMetadata)
+            .setMaxWidth(resources.getDimensionPixelSize(R.dimen.default_image_width))
+            .setMaxHeight(resources.getDimensionPixelSize(R.dimen.default_image_height))
             .build()
-// 4
-        placesClient.fetchPhoto(photoRequest)
-            .addOnSuccessListener { fetchPhotoResponse ->
-                val bitmap = fetchPhotoResponse.bitmap
-                displayPoiDisplayStep(place, bitmap)
-            }.addOnFailureListener { exception ->
+        placesClient.fetchPhoto(photoRequest).addOnSuccessListener { fetchPhotoResponse ->
+            val bitmap = fetchPhotoResponse.bitmap
+            displayPoiDisplayStep(place, bitmap)
+        }
+            .addOnFailureListener { exception ->
                 if (exception is ApiException) {
                     val statusCode = exception.statusCode
                     Log.e(
-                        TAG,
-                        "Place not found: " +
-                                exception.message + ", " +
-                                "statusCode: " + statusCode
+                        TAG, "Place not found: " + exception.message
+                                + ", " + "statusCode: " + statusCode
                     )
                 }
             }
-    }
-
-    private fun handleInfoWindowClick(marker: Marker) {
-        val placeInfo = (marker.tag as PlaceInfo)
-        if (placeInfo.place != null) {
-            GlobalScope.launch {
-                mapsViewModel.addBookmarkFromPlace(placeInfo.place, placeInfo.image)
-            }
-
-        }
-        marker.remove()
     }
 
     private fun displayPoiDisplayStep(place: Place, photo: Bitmap?) {
@@ -242,14 +198,40 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
                 .snippet(place.phoneNumber)
         )
         marker?.tag = PlaceInfo(place, photo)
+        marker?.showInfoWindow()
     }
 
-    private fun addPlaceMarker(
-        bookmark: MapsViewModel.BookmarkMarkerView
-    ): Marker? {
+
+    private fun handleInfoWindowClick(marker: Marker) {
+        when (marker.tag) {
+            is MapsActivity.PlaceInfo -> {
+                val placeInfo = (marker.tag as PlaceInfo)
+                if (placeInfo.place != null && placeInfo.image != null) {
+                    GlobalScope.launch {
+                        mapsViewModel.addBookmarkFromPlace(
+                            placeInfo.place,
+                            placeInfo.image
+                        )
+                    }
+                }
+                marker.remove();
+            }
+            is MapsViewModel.BookmarkView -> {
+                val bookmarkMarkerView = (marker.tag as MapsViewModel.BookmarkView)
+                marker.hideInfoWindow()
+                bookmarkMarkerView.id?.let {
+                    startBookmarkDetails(it)
+                }
+            }
+        }
+    }
+
+    private fun addPlaceMarker(bookmark: MapsViewModel.BookmarkView): Marker? {
         val marker = map.addMarker(
             MarkerOptions()
                 .position(bookmark.location)
+                .title(bookmark.name)
+                .snippet(bookmark.phone)
                 .icon(
                     BitmapDescriptorFactory.defaultMarker(
                         BitmapDescriptorFactory.HUE_AZURE
@@ -258,33 +240,65 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
                 .alpha(0.8f)
         )
         marker.tag = bookmark
+        bookmark.id?.let { markers.put(it, marker) }
         return marker
     }
 
-    private fun displayAllBookmarks(
-        bookmarks: List<MapsViewModel.BookmarkMarkerView>
-    ) {
+    private fun displayAllBookmarks(bookmarks: List<MapsViewModel.BookmarkView>) {
         for (bookmark in bookmarks) {
             addPlaceMarker(bookmark)
         }
     }
 
-    private fun createBookmarkMarkerObserver() {
-
-        mapsViewModel.getBookmarkMarkerViews()?.observe(
-            this, Observer<List<MapsViewModel.BookmarkMarkerView>> {
-
+    private fun createBookmarkObserver() {
+        mapsViewModel.getBookmarkViews()?.observe(
+            this, Observer<List<MapsViewModel.BookmarkView>> {
                 map.clear()
-
+                markers.clear()
                 it?.let {
                     displayAllBookmarks(it)
+                    bookmarkListAdapter.setBookmarkData(it)
                 }
             })
+    }
+
+    private fun startBookmarkDetails(bookmarkId: Long) {
+        val intent = Intent(this, BookmarkDetailsActivity::class.java)
+        intent.putExtra(EXTRA_BOOKMARK_ID, bookmarkId)
+        startActivity(intent)
+    }
+
+    private fun setupNavigationDrawer() {
+        val layoutManager = LinearLayoutManager(this)
+        bookmarkRecyclerView.layoutManager = layoutManager
+        bookmarkListAdapter = BookmarkListAdapter(null, this)
+        bookmarkRecyclerView.adapter = bookmarkListAdapter
+    }
+
+    private fun updateMapToLocation(location: Location) {
+        val latLng = LatLng(location.latitude, location.longitude)
+        map.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, 16.0f))
+    }
+
+    fun moveToBookmark(bookmark: MapsViewModel.BookmarkView) {
+        drawerLayout.closeDrawer(drawerView)
+        val marker = markers[bookmark.id]
+        marker?.showInfoWindow()
+        val location = Location("")
+        location.latitude = bookmark.location.latitude
+        location.longitude = bookmark.location.longitude
+        updateMapToLocation(location)
+    }
+
+    companion object {
+        const val EXTRA_BOOKMARK_ID = "com.raywenderlich.placebook.EXTRA_BOOKMARK_ID"
+        private const val REQUEST_LOCATION = 1
+        private const val TAG = "MapsActivity"
     }
 
     class PlaceInfo(
         val place: Place? = null,
         val image: Bitmap? = null
     )
-
 }
+

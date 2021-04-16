@@ -1,6 +1,7 @@
 package com.raywenderlich.placebook.viewmodel
 
 import android.app.Application
+import android.content.Context
 import android.graphics.Bitmap
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
@@ -10,16 +11,14 @@ import com.google.android.gms.maps.model.LatLng
 import com.google.android.libraries.places.api.model.Place
 import com.raywenderlich.placebook.model.Bookmark
 import com.raywenderlich.placebook.repository.BookmarkRepo
+import com.raywenderlich.placebook.util.ImageUtils
 
-class MapsViewModel(application: Application) :
-    AndroidViewModel(application) {
+class MapsViewModel(application: Application) : AndroidViewModel(application) {
+
     private val TAG = "MapsViewModel"
-    private var bookmarks: LiveData<List<BookmarkMarkerView>>? = null
+    private var bookmarkRepo: BookmarkRepo = BookmarkRepo(getApplication())
+    private var bookmarks: LiveData<List<BookmarkView>>? = null
 
-
-    private var bookmarkRepo: BookmarkRepo = BookmarkRepo(
-        getApplication()
-    )
 
     fun addBookmarkFromPlace(place: Place, image: Bitmap?) {
 
@@ -32,36 +31,49 @@ class MapsViewModel(application: Application) :
         bookmark.address = place.address.toString()
 
         val newId = bookmarkRepo.addBookmark(bookmark)
+        image?.let { bookmark.setImage(it, getApplication()) }
         Log.i(TAG, "New bookmark $newId added to the database.")
     }
 
-    private fun bookmarkToMarkerView(bookmark: Bookmark):
-            MapsViewModel.BookmarkMarkerView {
-        return MapsViewModel.BookmarkMarkerView(
+    data class BookmarkView(
+        var id: Long? = null,
+        var location: LatLng = LatLng(0.0, 0.0),
+        var name: String = "",
+        var phone: String = ""
+    ) {
+        fun getImage(context: Context): Bitmap? {
+            id?.let {
+                return ImageUtils.loadBitmapFromFile(context, Bookmark.generateImageFilename(it))
+            }
+            return null
+        }
+    }
+
+    private fun bookmarkToBookmarkView(bookmark: Bookmark): MapsViewModel.BookmarkView {
+        return MapsViewModel.BookmarkView(
             bookmark.id,
-            LatLng(bookmark.latitude, bookmark.longitude)
+            LatLng(bookmark.latitude, bookmark.longitude),
+            bookmark.name,
+            bookmark.phone
         )
     }
 
-    private fun mapBookmarksToMarkerView() {
+    private fun mapBookmarksToBookmarkView() {
+
         bookmarks = Transformations.map(bookmarkRepo.allBookmarks)
         { repoBookmarks ->
+
             repoBookmarks.map { bookmark ->
-                bookmarkToMarkerView(bookmark)
+                bookmarkToBookmarkView(bookmark)
             }
         }
+
     }
 
-    fun getBookmarkMarkerViews():
-            LiveData<List<BookmarkMarkerView>>? {
+    fun getBookmarkViews(): LiveData<List<MapsViewModel.BookmarkView>>? {
         if (bookmarks == null) {
-            mapBookmarksToMarkerView()
+            mapBookmarksToBookmarkView()
         }
         return bookmarks
     }
-
-    data class BookmarkMarkerView(
-        var id: Long? = null,
-        var location: LatLng = LatLng(0.0, 0.0)
-    )
 }
