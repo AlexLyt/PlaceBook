@@ -35,12 +35,13 @@ class BookmarkDetailsActivity : AppCompatActivity(),
         setContentView(R.layout.activity_bookmark_details)
         setupToolbar()
         getIntentData()
+        setupFab()
     }
 
     private fun setupToolbar() {
         setSupportActionBar(toolbar)
     }
-
+    // Populates fields in View
     private fun populateFields() {
         bookmarkDetailsView?.let { bookmarkView ->
             editTextName.setText(bookmarkView.name)
@@ -61,7 +62,7 @@ class BookmarkDetailsActivity : AppCompatActivity(),
             replaceImage()
         }
     }
-
+// Read Intent data
     private fun getIntentData() {
         val bookmarkId = intent.getLongExtra(MapsActivity.Companion.EXTRA_BOOKMARK_ID, 0)
         bookmarkDetailsViewModel.getBookmark(bookmarkId)?.observe(this,
@@ -98,7 +99,7 @@ class BookmarkDetailsActivity : AppCompatActivity(),
         }
         finish()
     }
-
+// saveChanges
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         when (item.itemId) {
             R.id.action_save -> {
@@ -112,7 +113,7 @@ class BookmarkDetailsActivity : AppCompatActivity(),
             else -> return super.onOptionsItemSelected(item)
         }
     }
-
+// interface
     override fun onCaptureClick() {
         photoFile = null
         try {
@@ -270,6 +271,39 @@ class BookmarkDetailsActivity : AppCompatActivity(),
             }
             .setNegativeButton("Cancel", null)
             .create().show()
+    }
+
+    private fun sharePlace() {
+        val bookmarkView = bookmarkDetailsView ?: return
+        var mapUrl = ""
+        if (bookmarkView.placeId == null) {
+            val location = URLEncoder.encode(
+                "${bookmarkView.latitude},"
+                        + "${bookmarkView.longitude}", "utf-8"
+            )
+            mapUrl = "https://www.google.com/maps/dir/?api=1" +
+                    "&destination=$location"
+        } else {
+            val name = URLEncoder.encode(bookmarkView.name, "utf-8")
+            mapUrl = "https://www.google.com/maps/dir/?api=1" +
+                    "&destination=$name&destination_place_id=" +
+                    "${bookmarkView.placeId}"
+        }
+        val sendIntent = Intent()
+        sendIntent.action = Intent.ACTION_SEND
+        sendIntent.putExtra(
+            Intent.EXTRA_TEXT,
+            "Check out ${bookmarkView.name} at:\n$mapUrl"
+        )
+        sendIntent.putExtra(
+            Intent.EXTRA_SUBJECT,
+            "Sharing ${bookmarkView.name}"
+        )
+        sendIntent.type = "text/plain"
+        startActivity(sendIntent)
+    }
+    private fun setupFab() {
+        fab.setOnClickListener { sharePlace() }
     }
 
     companion object {

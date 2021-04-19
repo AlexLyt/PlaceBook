@@ -8,6 +8,8 @@ import android.graphics.Bitmap
 import android.location.Location
 import android.os.Bundle
 import android.util.Log
+import android.view.WindowManager
+import android.widget.ProgressBar
 import androidx.activity.viewModels
 import androidx.appcompat.app.ActionBarDrawerToggle
 import androidx.appcompat.app.AppCompatActivity
@@ -44,7 +46,7 @@ import kotlinx.android.synthetic.main.main_view_maps.*
 // MY NEWEST PROJECT
 
 class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
-
+    // Variables
     private lateinit var map: GoogleMap
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private lateinit var placesClient: PlacesClient
@@ -64,12 +66,14 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         setupNavigationDrawer()
     }
 
+    // OnMapReadyCallback interface
     override fun onMapReady(googleMap: GoogleMap) {
         map = googleMap
         setupMapListeners()
         getCurrentLocation()
         createBookmarkObserver()
     }
+
     // User taps to add bookmark
     private fun setupMapListeners() {
         map.setInfoWindowAdapter(BookmarkInfoWindowAdapter(this))
@@ -96,11 +100,13 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         toggle.syncState()
     }
 
+    // User creates PlacesClient
     private fun setupPlacesClient() {
         Places.initialize(getApplicationContext(), getString(R.string.google_maps_key));
         placesClient = Places.createClient(this);
     }
 
+    // location permission
     override fun onRequestPermissionsResult(
         requestCode: Int,
         permissions: Array<String>,
@@ -126,6 +132,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         )
     }
 
+    // user's current location
     private fun getCurrentLocation() {
         if (ActivityCompat.checkSelfPermission(
                 this,
@@ -149,6 +156,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
     }
 
     private fun displayPoi(pointOfInterest: PointOfInterest) {
+        showProgress()
         displayPoiGetPlaceStep(pointOfInterest)
     }
 
@@ -174,10 +182,12 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
                     TAG,
                     "Place not found: " + exception.message + ", " + "statusCode: " + statusCode
                 )
+                hideProgress()
             }
         }
     }
 
+    // Get photo
     private fun displayPoiGetPhotoStep(place: Place) {
         val photoMetadata = place.photoMetadatas?.get(0)
         if (photoMetadata == null) {
@@ -195,14 +205,16 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
                 if (exception is ApiException) {
                     val statusCode = exception.statusCode
                     Log.e(
-                        TAG, "Place not found: " + exception.message
-                                + ", " + "statusCode: " + statusCode
+                        TAG, "Place Not found: " + exception.message + ", " +
+                                "statusCode: " + statusCode
                     )
+                    hideProgress()
                 }
             }
     }
 
     private fun displayPoiDisplayStep(place: Place, photo: Bitmap?) {
+        hideProgress()
         val marker = map.addMarker(
             MarkerOptions()
                 .position(place.latLng as LatLng)
@@ -213,7 +225,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         marker?.showInfoWindow()
     }
 
-
+    // tap on info window
     private fun handleInfoWindowClick(marker: Marker) {
         when (marker.tag) {
             is MapsActivity.PlaceInfo -> {
@@ -238,6 +250,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         }
     }
 
+    // Display info for image
     private fun addPlaceMarker(bookmark: MapsViewModel.BookmarkView): Marker? {
         val marker = map.addMarker(
             MarkerOptions()
@@ -254,6 +267,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         return marker
     }
 
+    // bookmarks
     private fun displayAllBookmarks(bookmarks: List<MapsViewModel.BookmarkView>) {
         for (bookmark in bookmarks) {
             addPlaceMarker(bookmark)
@@ -300,6 +314,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         updateMapToLocation(location)
     }
 
+    // search for place
     private fun searchAtCurrentLocation() {
         val placeFields = listOf(
             Place.Field.ID,
@@ -323,7 +338,6 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
                 .build(this)
             startActivityForResult(intent, AUTOCOMPLETE_REQUEST_CODE)
         } catch (e: GooglePlayServicesRepairableException) {
-//TODO: Handle exception} catch (e: GooglePlayServicesNotAvailableException) {
 
         }
     }
@@ -341,6 +355,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
                     location.latitude = place.latLng?.latitude ?: 0.0
                     location.longitude = place.latLng?.longitude ?: 0.0
                     updateMapToLocation(location)
+                    showProgress()
                     displayPoiGetPhotoStep(place)
                 }
         }
@@ -362,6 +377,30 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         }
     }
 
+    private fun disableUserInteraction() {
+        window.setFlags(
+            WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
+            WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
+        )
+    }
+
+    private fun enableUserInteraction() {
+        window.clearFlags(
+            WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
+        )
+    }
+
+    private fun showProgress() {
+        progressBar.visibility = ProgressBar.VISIBLE
+        disableUserInteraction()
+    }
+
+    private fun hideProgress() {
+        progressBar.visibility = ProgressBar.GONE
+        enableUserInteraction()
+    }
+
+    // class to set Place obj and image
     class PlaceInfo(
         val place: Place? = null,
         val image: Bitmap? = null

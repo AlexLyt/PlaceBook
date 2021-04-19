@@ -23,7 +23,10 @@ class BookmarkDetailsViewModel(application: Application) : AndroidViewModel(appl
         var phone: String = "",
         var address: String = "",
         var notes: String = "",
-        var category: String = ""
+        var category: String = "",
+        var longitude: Double = 0.0,
+        var latitude: Double = 0.0,
+        var placeId: String? = null
     ) {
         fun getImage(context: Context): Bitmap? {
             id?.let {
@@ -41,7 +44,7 @@ class BookmarkDetailsViewModel(application: Application) : AndroidViewModel(appl
             }
         }
     }
-
+    // Convert DB bookmark to View bookmark
     private fun bookmarkToBookmarkView(bookmark: Bookmark): BookmarkDetailsView {
         return BookmarkDetailsView(
             bookmark.id,
@@ -49,10 +52,13 @@ class BookmarkDetailsViewModel(application: Application) : AndroidViewModel(appl
             bookmark.phone,
             bookmark.address,
             bookmark.notes,
-            bookmark.category
+            bookmark.category,
+            bookmark.longitude,
+            bookmark.latitude,
+            bookmark.placeId
         )
     }
-
+    // Convert live db bookmark to live bookmark view object
     fun mapBookmarkToBookmarkView(bookmarkId: Long) {
         val bookmark = bookmarkRepo.getLiveBookmark(bookmarkId)
         bookmarkDetailsView = Transformations.map(bookmark)
@@ -91,6 +97,7 @@ class BookmarkDetailsViewModel(application: Application) : AndroidViewModel(appl
             bookmark?.let { bookmarkRepo.updateBookmark(it) }
         }
     }
+
     fun getCategoryResourceId(category: String): Int? {
         return bookmarkRepo.getCategoryResourceId(category)
     }
@@ -98,6 +105,7 @@ class BookmarkDetailsViewModel(application: Application) : AndroidViewModel(appl
     fun getCategories(): List<String> {
         return bookmarkRepo.categories
     }
+
     fun deleteBookmark(bookmarkDetailsView: BookmarkDetailsView) {
         GlobalScope.launch {
             val bookmark = bookmarkDetailsView.id?.let {
