@@ -113,4 +113,6 @@ class MapsViewModel(application: Application) : AndroidViewModel(application) {
             return null
         }
     }
+
+
 }

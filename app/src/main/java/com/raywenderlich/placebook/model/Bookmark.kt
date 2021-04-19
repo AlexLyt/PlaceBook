@@ -4,12 +4,18 @@ import android.content.Context
 import android.graphics.Bitmap
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import com.raywenderlich.placebook.util.FileUtils
 import com.raywenderlich.placebook.util.ImageUtils
 
-@Entity
 
+// Single data source
+// 1 DB Entity Class
+@Entity
+// 2 - primary constructor with Primary Key and fields with default values
 data class Bookmark(
+    // 3
     @PrimaryKey(autoGenerate = true) var id: Long? = null,
+    // 4
     var placeId: String? = null,
     var name: String = "",
     var address: String = "",
@@ -18,17 +24,26 @@ data class Bookmark(
     var phone: String = "",
     var notes: String = "",
     var category: String = ""
-) {
-
+)
+//***
+{
+    // 1
     fun setImage(image: Bitmap, context: Context) {
-
-        id?.let { ImageUtils.saveBitmapToFile(context, image, generateImageFilename(it))
+        //2
+        id?.let {
+            ImageUtils.saveBitmapToFile(context, image, generateImageFilename(it))
         }
     }
 
+    fun deleteImage(context: Context) {
+        id?.let {
+            FileUtils.deleteFile(context, generateImageFilename(it))
+        }
+    }
+    // 3
     companion object {
         fun generateImageFilename(id: Long): String {
-
+            // 4
             return "bookmark$id.png"
         }
     }

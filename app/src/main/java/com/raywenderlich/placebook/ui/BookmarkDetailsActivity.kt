@@ -4,13 +4,14 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.net.Uri
+import android.os.Bundle
 import android.provider.MediaStore
 import android.view.MenuItem
 import android.view.View
 import android.widget.AdapterView
 import android.widget.ArrayAdapter
-import android.widget.Toast
 import androidx.activity.viewModels
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.FileProvider
 import com.raywenderlich.placebook.R
@@ -18,7 +19,7 @@ import com.raywenderlich.placebook.util.ImageUtils
 import com.raywenderlich.placebook.viewmodel.BookmarkDetailsViewModel
 import kotlinx.android.synthetic.main.activity_bookmark_details.*
 import java.io.File
-import java.util.Observer
+import java.net.URLEncoder
 
 class BookmarkDetailsActivity : AppCompatActivity(),
     PhotoOptionDialogFragment.PhotoOptionDialogListener {
@@ -102,6 +103,10 @@ class BookmarkDetailsActivity : AppCompatActivity(),
         when (item.itemId) {
             R.id.action_save -> {
                 saveChanges()
+                return true
+            }
+            R.id.action_delete -> {
+                deleteBookmark()
                 return true
             }
             else -> return super.onOptionsItemSelected(item)
@@ -235,20 +240,36 @@ class BookmarkDetailsActivity : AppCompatActivity(),
         spinnerCategory.post {
             spinnerCategory.onItemSelectedListener = object :
                 AdapterView.OnItemSelectedListener {
-                override fun onItemSelected(parent: AdapterView<*>, view:
-                View, position: Int, id: Long) {
+                override fun onItemSelected(
+                    parent: AdapterView<*>, view:
+                    View, position: Int, id: Long
+                ) {
                     val category = parent.getItemAtPosition(position) as
                             String
                     val resourceId =
                         bookmarkDetailsViewModel.getCategoryResourceId(category)
                     resourceId?.let {
-                        imageViewCategory.setImageResource(it) }
+                        imageViewCategory.setImageResource(it)
+                    }
                 }
+
                 override fun onNothingSelected(parent: AdapterView<*>) {
 // method is required but not used.
                 }
             }
         }
+    }
+
+    private fun deleteBookmark() {
+        val bookmarkView = bookmarkDetailsView ?: return
+        AlertDialog.Builder(this)
+            .setMessage("Delete?")
+            .setPositiveButton("Ok") { _, _ ->
+                bookmarkDetailsViewModel.deleteBookmark(bookmarkView)
+                finish()
+            }
+            .setNegativeButton("Cancel", null)
+            .create().show()
     }
 
     companion object {

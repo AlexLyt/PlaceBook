@@ -70,7 +70,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         getCurrentLocation()
         createBookmarkObserver()
     }
-
+    // User taps to add bookmark
     private fun setupMapListeners() {
         map.setInfoWindowAdapter(BookmarkInfoWindowAdapter(this))
         map.setOnPoiClickListener {
@@ -81,6 +81,9 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         }
         fab.setOnClickListener {
             searchAtCurrentLocation()
+        }
+        map.setOnMapLongClickListener { latLng ->
+            newBookmark(latLng)
         }
     }
 
@@ -348,6 +351,15 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         private const val REQUEST_LOCATION = 1
         private const val TAG = "MapsActivity"
         private const val AUTOCOMPLETE_REQUEST_CODE = 2
+    }
+
+    private fun newBookmark(latLng: LatLng) {
+        GlobalScope.launch {
+            val bookmarkId = mapsViewModel.addBookmark(latLng)
+            bookmarkId?.let {
+                startBookmarkDetails(it)
+            }
+        }
     }
 
     class PlaceInfo(

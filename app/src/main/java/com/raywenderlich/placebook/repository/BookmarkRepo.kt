@@ -9,7 +9,7 @@ import com.raywenderlich.placebook.db.PlaceBookDatabase
 import com.raywenderlich.placebook.model.Bookmark
 
 
-class BookmarkRepo(context: Context) {
+class BookmarkRepo(private val context: Context) {
 
     private var db = PlaceBookDatabase.getInstance(context)
     private var bookmarkDao: BookmarkDao = db.bookmarkDao()
@@ -91,5 +91,10 @@ class BookmarkRepo(context: Context) {
     }
     fun getCategoryResourceId(placeCategory: String): Int? {
         return allCategories[placeCategory]
+    }
+
+    fun deleteBookmark(bookmark: Bookmark) {
+        bookmark.deleteImage(context)
+        bookmarkDao.deleteBookmark(bookmark)
     }
 }

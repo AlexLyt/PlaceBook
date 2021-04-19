@@ -43,6 +43,8 @@
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|end"
         android:layout_margin="16dp"
+        android:background="#F3F0F0"
+        app:rippleColor="#151414"
         app:srcCompat="@drawable/ic_search_white" />
 
     <ProgressBar
