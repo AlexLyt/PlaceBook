@@ -28,10 +28,11 @@ object ImageUtils {
             e.printStackTrace()
         }
     }
-
-    fun loadBitmapFromFile(context: Context, filename: String): Bitmap? {
+// loads Image
+    fun loadBitMapFromFile(context: Context, filename: String): Bitmap? {
         val filePath = File(context.filesDir, filename).absolutePath
         return BitmapFactory.decodeFile(filePath)
+
     }
 
     @Throws(IOException::class)

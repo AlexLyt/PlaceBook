@@ -14,14 +14,14 @@ import com.raywenderlich.placebook.repository.BookmarkRepo
 import com.raywenderlich.placebook.util.ImageUtils
 
 class MapsViewModel(application: Application) : AndroidViewModel(application) {
-
     private val TAG = "MapsViewModel"
+    // 2
     private var bookmarkRepo: BookmarkRepo = BookmarkRepo(getApplication())
+    // Variable to store list of bookmark Views
     private var bookmarks: LiveData<List<BookmarkView>>? = null
-
-
+    // 3
     fun addBookmarkFromPlace(place: Place, image: Bitmap?) {
-
+        // 4
         val bookmark = bookmarkRepo.createBookmark()
         bookmark.placeId = place.id
         bookmark.name = place.name.toString()
@@ -30,50 +30,87 @@ class MapsViewModel(application: Application) : AndroidViewModel(application) {
         bookmark.phone = place.phoneNumber.toString()
         bookmark.address = place.address.toString()
 
+        // Assigns cat to bookmark
+        bookmark.category = getPlaceCategory(place)
+
+        // 5
         val newId = bookmarkRepo.addBookmark(bookmark)
-        image?.let { bookmark.setImage(it, getApplication()) }
+
+        // ***save image to Bookmark
+        image?.let {bookmark.setImage(it, getApplication())}
+
         Log.i(TAG, "New bookmark $newId added to the database.")
     }
 
-    data class BookmarkView(
-        var id: Long? = null,
-        var location: LatLng = LatLng(0.0, 0.0),
-        var name: String = "",
-        var phone: String = ""
-    ) {
-        fun getImage(context: Context): Bitmap? {
-            id?.let {
-                return ImageUtils.loadBitmapFromFile(context, Bookmark.generateImageFilename(it))
-            }
-            return null
-        }
-    }
-
-    private fun bookmarkToBookmarkView(bookmark: Bookmark): MapsViewModel.BookmarkView {
+    // Helper method
+    //*** add image info
+    private fun bookmarkToBookmarkView(bookmark: Bookmark) : MapsViewModel.BookmarkView {
         return MapsViewModel.BookmarkView(
             bookmark.id,
             LatLng(bookmark.latitude, bookmark.longitude),
             bookmark.name,
-            bookmark.phone
-        )
+            bookmark.phone,
+            bookmarkRepo.getCategoryResourceId(bookmark.category))
     }
 
+    // Maps LiveData updates changes in the db
     private fun mapBookmarksToBookmarkView() {
-
-        bookmarks = Transformations.map(bookmarkRepo.allBookmarks)
-        { repoBookmarks ->
-
-            repoBookmarks.map { bookmark ->
+        // 1
+        bookmarks = Transformations.map(bookmarkRepo.allBookmarks) {
+                repoBookMarks ->
+            // 2
+            repoBookMarks.map { bookmark ->
                 bookmarkToBookmarkView(bookmark)
             }
         }
-
     }
 
-    fun getBookmarkViews(): LiveData<List<MapsViewModel.BookmarkView>>? {
+    fun getBookmarkViews() : LiveData<List<BookmarkView>>? {
         if (bookmarks == null) {
             mapBookmarksToBookmarkView()
         }
         return bookmarks
+    }
+
+    // Converts Place type to bookmark cat
+    private fun getPlaceCategory(place: Place): String {
+        // 1
+        var cateogry = "Other"
+        var placeTypes = place.types
+
+        placeTypes?.let { placeTypes ->
+            // 2
+            if (placeTypes.size > 0) {
+                // 3
+                val placeType = placeTypes[0]
+                cateogry = bookmarkRepo.placeTypeToCategory(placeType)
+            }
+        }
+        // 4
+        return cateogry
+    }
+    //*** AD-HOC Bookmark
+    fun addBookmark(latLng: LatLng) : Long? {
+        val bookmark = bookmarkRepo.createBookmark()
+        bookmark.name = "Untitled"
+        bookmark.longitude = latLng.longitude
+        bookmark.latitude = latLng.latitude
+        bookmark.category = "Other"
+        return bookmarkRepo.addBookmark(bookmark)
+    }
+
+    // Hold data for visible bookmark marker
+    //*** Gets image
+    data class BookmarkView(var id: Long? = null,
+                            var location: LatLng = LatLng(0.0, 0.0),
+                            var name: String = "",
+                            var phone: String = "",
+                            var categoryResourceId: Int? = null) {
+        fun getImage(context: Context): Bitmap? {
+            id?.let {
+                return ImageUtils.loadBitMapFromFile(context, Bookmark.generateImageFilename(it))
+            }
+            return null
+        }
     }
 }
